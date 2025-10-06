@@ -5,11 +5,10 @@
 {% block content %}
 <div class="page-header">
     <h2>Settings</h2>
-    <a href="/accounts" class="btn btn-secondary">Back to Accounts</a>
 </div>
 
 <div class="card">
-    <h3 style="margin-bottom: 20px; color: #2c3e50;">Application Server Settings</h3>
+    <h3 style="margin-bottom: 20px; color: #2c3e50;">AnyCRM Server Settings</h3>
     <p style="color: #7f8c8d; margin-bottom: 20px;">
         Configure your application server URL and API key for external access.
     </p>
@@ -37,18 +36,18 @@
         </p>
 
         <div class="form-group">
+            <label for="anyquest_api_url">AnyQuest API URL</label>
+            <input type="url" id="anyquest_api_url" name="anyquest_api_url"
+                   value="{{ config.anyquest_api_url }}"
+                   placeholder="https://api.anyquest.ai">
+        </div>
+
+        <div class="form-group">
             <label for="anyquest_api_key">Enrichment Agent API Key *</label>
             <input type="text" id="anyquest_api_key" name="anyquest_api_key"
                    value="{{ config.anyquest_api_key }}"
                    placeholder="Enter enrichment agent API key" required>
             <small style="color: #7f8c8d;">Get the API key from the Integrations tab in the agent builder</small>
-        </div>
-
-        <div class="form-group">
-            <label for="anyquest_api_url">AnyQuest API URL</label>
-            <input type="url" id="anyquest_api_url" name="anyquest_api_url"
-                   value="{{ config.anyquest_api_url }}"
-                   placeholder="https://api.anyquest.ai">
         </div>
 
         <div class="form-actions">
