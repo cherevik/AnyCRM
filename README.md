@@ -6,7 +6,8 @@ A simple, self-contained CRM application built with Python, FastAPI, and SQLite.
 
 - **Two-table database**: Accounts and Contacts with relationship support
 - **Web UI**: Clean, responsive interface for CRUD operations
-- **REST API**: Full REST API with automatic OpenAPI documentation
+- **REST API**: Full REST API with Bearer token authentication and automatic OpenAPI documentation
+- **AI Agent Integration**: Account enrichment via AnyQuest AI agents with real-time WebSocket updates
 - **Self-contained**: Uses SQLite - no external database required
 - **Easy deployment**: Works on Replit, local machines, and cloud platforms
 
@@ -90,15 +91,20 @@ A simple, self-contained CRM application built with Python, FastAPI, and SQLite.
 AnyCRM/
 ├── main.py              # Main application file with FastAPI routes
 ├── database.py          # Database models and initialization
+├── config.py            # Configuration management
+├── migrate_db.py        # Database migration script
 ├── requirements.txt     # Python dependencies
 ├── README.md           # This file
+├── config.json         # Configuration file (created automatically)
 ├── anycrm.db           # SQLite database (created automatically)
 ├── templates/          # HTML templates for web UI
 │   ├── base.html       # Base template with common layout
 │   ├── accounts.html   # Accounts list page
 │   ├── account_form.html # Account create/edit form
+│   ├── account_detail.html # Account detail page with enrichment
 │   ├── contacts.html   # Contacts list page
-│   └── contact_form.html # Contact create/edit form
+│   ├── contact_form.html # Contact create/edit form
+│   └── settings.html   # Settings page
 └── static/             # Static files (currently empty)
 ```
 
@@ -107,11 +113,10 @@ AnyCRM/
 ### Accounts Table
 - `id` - Integer, Primary Key, Auto-increment
 - `name` - Text, Required
-- `industry` - Text, Optional
-- `phone` - Text, Optional
-- `email` - Text, Optional
+- `industry` - Text, Optional (dropdown selection)
 - `website` - Text, Optional
-- `address` - Text, Optional
+- `notes` - Text, Optional
+- `state` - Integer, Default 0 (internal: 0=ready, 1=enriching)
 - `created_at` - Timestamp, Auto-generated
 
 ### Contacts Table
@@ -121,10 +126,18 @@ AnyCRM/
 - `last_name` - Text, Required
 - `title` - Text, Optional
 - `email` - Text, Optional
-- `phone` - Text, Optional
+- `linkedin` - Text, Optional
+- `notes` - Text, Optional
 - `created_at` - Timestamp, Auto-generated
 
 ## REST API Endpoints
+
+All REST API endpoints require Bearer token authentication. Include your API key in the `Authorization` header:
+```
+Authorization: Bearer YOUR_API_KEY
+```
+
+You can find your API key in the Settings page after starting the application.
 
 ### Accounts
 
@@ -145,7 +158,7 @@ AnyCRM/
 ### API Documentation
 
 The OpenAPI specification is automatically generated and available at:
-- **Swagger UI**: http://localhost:8000/docs
+- **Swagger UI**: http://localhost:8000/docs (click "Authorize" to enter your API key)
 - **ReDoc**: http://localhost:8000/redoc
 - **OpenAPI JSON**: http://localhost:8000/openapi.json
 
@@ -154,38 +167,56 @@ The OpenAPI specification is automatically generated and available at:
 ### Using the Web UI
 
 1. Navigate to http://localhost:8000
-2. Use the navigation menu to switch between Accounts and Contacts
+2. Use the navigation menu to switch between Accounts, Contacts, and Settings
 3. Click "New Account" or "New Contact" to create records
-4. Click "Edit" to modify existing records
-5. Click "Delete" to remove records (with confirmation)
+4. Click on an account name to view details and associated contacts
+5. Click "Enrich Account" to trigger AI-powered account enrichment (requires AnyQuest API key)
+6. Click "Edit" to modify existing records
+7. Click "Delete" to remove records (with confirmation)
+
+### Configuring AI Agent Integration
+
+1. Navigate to Settings (http://localhost:8000/settings)
+2. Under "AnyQuest Agent Configuration", enter your AnyQuest API key and URL
+3. The Base URL is automatically configured for your application server
+4. Save the configuration
+5. Go to any account detail page and click "Enrich Account" to trigger enrichment
+6. The page will update in real-time when enrichment completes
 
 ### Using the REST API
+
+Replace `YOUR_API_KEY` with your actual API key from the Settings page.
 
 #### Create an Account
 ```bash
 curl -X POST "http://localhost:8000/api/accounts" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Acme Corporation",
     "industry": "Technology",
-    "email": "contact@acme.com",
-    "phone": "555-0100"
+    "website": "https://acme.com",
+    "notes": "Potential client"
   }'
 ```
 
 #### Get All Accounts
 ```bash
-curl "http://localhost:8000/api/accounts"
+curl "http://localhost:8000/api/accounts" \
+  -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
 #### Create a Contact
 ```bash
 curl -X POST "http://localhost:8000/api/contacts" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "first_name": "John",
     "last_name": "Doe",
+    "title": "CEO",
     "email": "john.doe@acme.com",
+    "linkedin": "https://linkedin.com/in/johndoe",
     "account_id": 1
   }'
 ```
@@ -193,15 +224,18 @@ curl -X POST "http://localhost:8000/api/contacts" \
 #### Update a Contact
 ```bash
 curl -X PUT "http://localhost:8000/api/contacts/1" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "Senior Manager"
+    "title": "Senior Manager",
+    "notes": "Prefers email communication"
   }'
 ```
 
 #### Delete an Account
 ```bash
-curl -X DELETE "http://localhost:8000/api/accounts/1"
+curl -X DELETE "http://localhost:8000/api/accounts/1" \
+  -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
 ## Development
@@ -222,7 +256,9 @@ The application runs with auto-reload enabled by default. Any changes to the Pyt
 - **Uvicorn** - ASGI server for running FastAPI applications
 - **SQLite** - Lightweight, serverless database
 - **Jinja2** - Template engine for rendering HTML
-- **Python 3** - Programming language
+- **WebSockets** - Real-time communication for enrichment updates
+- **httpx** - Async HTTP client for API calls
+- **Python 3.8+** - Programming language
 
 ## License
 
@@ -241,7 +277,12 @@ uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
 ```
 
 ### Database Issues
-If you encounter database errors, delete `anycrm.db` and restart the application to create a fresh database.
+If you encounter database errors about missing columns, run the migration script:
+```bash
+python migrate_db.py
+```
+
+To start completely fresh, delete `anycrm.db` and restart the application to create a new database.
 
 ### Module Not Found Errors
 Make sure you've activated your virtual environment and installed all dependencies:
