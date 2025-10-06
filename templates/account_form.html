@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}{% if account %}Edit Account{% else %}New Account{% endif %} - AnyCRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>{% if account %}Edit Account{% else %}New Account{% endif %}</h2>
+</div>
+
+<div class="card">
+    <form method="post" action="{{ action }}">
+        <div class="form-group">
+            <label for="name">Name *</label>
+            <input type="text" id="name" name="name" value="{{ account.name if account else '' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="industry">Industry</label>
+            <select id="industry" name="industry">
+                <option value="">-- Select Industry --</option>
+                {% for ind in industries %}
+                <option value="{{ ind }}" {% if account and account.industry == ind %}selected{% endif %}>
+                    {{ ind }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="website">Website</label>
+            <input type="url" id="website" name="website" value="{{ account.website if account else '' }}">
+        </div>
+
+        <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea id="notes" name="notes">{{ account.notes if account else '' }}</textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn">Save</button>
+            <a href="/accounts" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

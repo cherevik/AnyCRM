@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Contacts - AnyCRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Contacts</h2>
+    <a href="/contacts/new" class="btn">+ New Contact</a>
+</div>
+
+{% if contacts %}
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Title</th>
+            <th>Account</th>
+            <th>Email</th>
+            <th>LinkedIn</th>
+            <th>Notes</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for contact in contacts %}
+        <tr>
+            <td><strong>{{ contact.first_name }} {{ contact.last_name }}</strong></td>
+            <td>{{ contact.title or '-' }}</td>
+            <td>{{ contact.account_name or '-' }}</td>
+            <td>{{ contact.email or '-' }}</td>
+            <td>{% if contact.linkedin %}<a href="{{ contact.linkedin }}" target="_blank">Profile</a>{% else %}-{% endif %}</td>
+            <td>{{ contact.notes[:50] if contact.notes else '-' }}{{ '...' if contact.notes and contact.notes|length > 50 else '' }}</td>
+            <td>
+                <div class="actions">
+                    <a href="/contacts/{{ contact.id }}/edit" class="btn btn-secondary">Edit</a>
+                    <form method="post" action="/contacts/{{ contact.id }}/delete" style="display: inline;">
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this contact?')">Delete</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <h3>No contacts yet</h3>
+        <p>Get started by creating your first contact.</p>
+        <br>
+        <a href="/contacts/new" class="btn">+ New Contact</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

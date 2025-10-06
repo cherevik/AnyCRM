@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - AnyCRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Settings</h2>
+    <a href="/accounts" class="btn btn-secondary">Back to Accounts</a>
+</div>
+
+<div class="card">
+    <h3 style="margin-bottom: 20px; color: #2c3e50;">Application Server Settings</h3>
+    <p style="color: #7f8c8d; margin-bottom: 20px;">
+        Configure your application server URL and API key for external access.
+    </p>
+
+    <form method="post" action="/settings/save">
+        <div class="form-group">
+            <label for="base_url">Base URL</label>
+            <input type="url" id="base_url" name="base_url"
+                   value="{{ config.base_url }}"
+                   placeholder="http://localhost:8000">
+            <small style="color: #7f8c8d;">The base URL where external services can reach your application (use ngrok for local development)</small>
+        </div>
+
+        <div class="form-group">
+            <label for="api_key">API Key</label>
+            <input type="text" id="api_key" name="api_key"
+                   value="{{ config.api_key }}"
+                   placeholder="Enter API key" readonly>
+            <small style="color: #7f8c8d;">This key is required for REST API access via Bearer token authentication</small>
+        </div>
+
+        <h3 style="margin-top: 40px; margin-bottom: 20px; color: #2c3e50;">AnyQuest Agent Configuration</h3>
+        <p style="color: #7f8c8d; margin-bottom: 20px;">
+            Configure your AnyQuest API credentials to enable AI-powered account enrichment.
+        </p>
+
+        <div class="form-group">
+            <label for="anyquest_api_key">Enrichment Agent API Key *</label>
+            <input type="text" id="anyquest_api_key" name="anyquest_api_key"
+                   value="{{ config.anyquest_api_key }}"
+                   placeholder="Enter enrichment agent API key" required>
+            <small style="color: #7f8c8d;">Get the API key from the Integrations tab in the agent builder</small>
+        </div>
+
+        <div class="form-group">
+            <label for="anyquest_api_url">AnyQuest API URL</label>
+            <input type="url" id="anyquest_api_url" name="anyquest_api_url"
+                   value="{{ config.anyquest_api_url }}"
+                   placeholder="https://api.anyquest.ai">
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn">Save Settings</button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

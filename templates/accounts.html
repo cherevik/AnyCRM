@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Accounts - AnyCRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Accounts</h2>
+    <a href="/accounts/new" class="btn">+ New Account</a>
+</div>
+
+{% if accounts %}
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Industry</th>
+            <th>Website</th>
+            <th>Notes</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for account in accounts %}
+        <tr>
+            <td><strong><a href="/accounts/{{ account.id }}" style="color: #2c3e50; text-decoration: none;">{{ account.name }}</a></strong></td>
+            <td>{{ account.industry or '-' }}</td>
+            <td>{{ account.website or '-' }}</td>
+            <td>{{ account.notes[:50] if account.notes else '-' }}{{ '...' if account.notes and account.notes|length > 50 else '' }}</td>
+            <td>
+                <div class="actions">
+                    <a href="/accounts/{{ account.id }}/edit" class="btn btn-secondary">Edit</a>
+                    <form method="post" action="/accounts/{{ account.id }}/delete" style="display: inline;">
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this account?')">Delete</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <h3>No accounts yet</h3>
+        <p>Get started by creating your first account.</p>
+        <br>
+        <a href="/accounts/new" class="btn">+ New Account</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
