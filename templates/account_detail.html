@@ -6,7 +6,19 @@
 <div class="page-header">
     <h2>{{ account.name }}</h2>
     <div>
+        {% if account.state == 1 %}
+        <div class="btn" style="background-color: #f39c12; cursor: default;">
+            <span style="animation: pulse 1.5s ease-in-out infinite;">Enriching...</span>
+        </div>
+        <style>
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
+            }
+        </style>
+        {% else %}
         <button onclick="showEnrichDialog()" class="btn" style="background-color: #9b59b6;">Enrich Account</button>
+        {% endif %}
         <a href="/accounts/{{ account.id }}/edit" class="btn btn-secondary">Edit Account</a>
         <a href="/accounts" class="btn btn-secondary">Back to Accounts</a>
     </div>
@@ -17,10 +29,10 @@
     <div style="background: white; padding: 30px; border-radius: 8px; max-width: 500px; width: 90%;">
         <h3 style="margin-top: 0; color: #2c3e50;">Enrich Account</h3>
         <p style="color: #7f8c8d; margin-bottom: 20px;">
-            Describe what information you'd like the AI agent to find and add to this account.
+            Optionally describe what information you'd like the AI agent to find and add to this account. If left blank, the agent will perform general account enrichment.
         </p>
         <form id="enrichForm" method="post" action="/accounts/{{ account.id }}/enrich">
-            <textarea id="instructions" name="instructions" rows="5" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit;" placeholder="Example: Find the CEO and CTO contacts, update company information from their website, add recent news..."></textarea>
+            <textarea id="instructions" name="instructions" rows="5" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit;" placeholder="Example: Find the CEO and CTO contacts, update company information from their website... (optional)"></textarea>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button type="submit" class="btn">Start Enrichment</button>
                 <button type="button" onclick="hideEnrichDialog()" class="btn btn-secondary">Cancel</button>
@@ -120,6 +132,26 @@ ws.onerror = function(error) {
     console.log('WebSocket error:', error);
 };
 
+// Update enrich button state
+function updateEnrichButton(isEnriching) {
+    const buttonContainer = document.querySelector('.page-header > div');
+    const existingButton = buttonContainer.querySelector('button[onclick="showEnrichDialog()"], .btn[style*="f39c12"]');
+
+    if (isEnriching) {
+        // Replace button with enriching message
+        existingButton.outerHTML = `
+            <div class="btn" style="background-color: #f39c12; cursor: default;">
+                <span style="animation: pulse 1.5s ease-in-out infinite;">Enriching...</span>
+            </div>
+        `;
+    } else {
+        // Replace message with button
+        existingButton.outerHTML = `
+            <button onclick="showEnrichDialog()" class="btn" style="background-color: #9b59b6;">Enrich Account</button>
+        `;
+    }
+}
+
 // Dialog functions
 function showEnrichDialog() {
     document.getElementById('enrichDialog').style.display = 'flex';
@@ -136,11 +168,6 @@ document.getElementById('enrichForm').addEventListener('submit', async function(
     const formData = new FormData(this);
     const instructions = formData.get('instructions');
 
-    if (!instructions.trim()) {
-        alert('Please provide instructions for enrichment');
-        return;
-    }
-
     hideEnrichDialog();
     showNotification('Starting enrichment... This may take a few minutes.', '#3498db');
 
@@ -155,6 +182,8 @@ document.getElementById('enrichForm').addEventListener('submit', async function(
             throw new Error(error.detail || 'Enrichment failed');
         }
 
+        // Immediately update UI to show enriching state
+        updateEnrichButton(true);
         showNotification('Enrichment in progress... You will be notified when complete.', '#f39c12');
     } catch (error) {
         showNotification('Error: ' + error.message, '#e74c3c');

@@ -4,7 +4,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 import uvicorn
 import httpx
@@ -98,37 +98,37 @@ INDUSTRIES = [
 
 # Pydantic models for API
 class AccountCreate(BaseModel):
-    name: str
-    industry: Optional[str] = None
-    website: Optional[str] = None
-    notes: Optional[str] = None
+    name: str = Field(..., description="Company or account name")
+    industry: Optional[str] = Field(None, description="Industry sector (e.g., Technology, Healthcare, Finance)")
+    website: Optional[str] = Field(None, description="Company website URL")
+    notes: Optional[str] = Field(None, description="Additional notes or information about the account")
 
 
 class AccountUpdate(BaseModel):
-    name: Optional[str] = None
-    industry: Optional[str] = None
-    website: Optional[str] = None
-    notes: Optional[str] = None
+    name: Optional[str] = Field(None, description="Company or account name")
+    industry: Optional[str] = Field(None, description="Industry sector (e.g., Technology, Healthcare, Finance)")
+    website: Optional[str] = Field(None, description="Company website URL")
+    notes: Optional[str] = Field(None, description="Additional notes or information about the account")
 
 
 class ContactCreate(BaseModel):
-    account_id: Optional[int] = None
-    first_name: str
-    last_name: str
-    title: Optional[str] = None
-    email: Optional[str] = None
-    linkedin: Optional[str] = None
-    notes: Optional[str] = None
+    account_id: Optional[int] = Field(None, description="ID of the associated account")
+    first_name: str = Field(..., description="Contact's first name")
+    last_name: str = Field(..., description="Contact's last name")
+    title: Optional[str] = Field(None, description="Job title or position")
+    email: Optional[str] = Field(None, description="Email address")
+    linkedin: Optional[str] = Field(None, description="LinkedIn profile URL")
+    notes: Optional[str] = Field(None, description="Additional notes about the contact")
 
 
 class ContactUpdate(BaseModel):
-    account_id: Optional[int] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    title: Optional[str] = None
-    email: Optional[str] = None
-    linkedin: Optional[str] = None
-    notes: Optional[str] = None
+    account_id: Optional[int] = Field(None, description="ID of the associated account")
+    first_name: Optional[str] = Field(None, description="Contact's first name")
+    last_name: Optional[str] = Field(None, description="Contact's last name")
+    title: Optional[str] = Field(None, description="Job title or position")
+    email: Optional[str] = Field(None, description="Email address")
+    linkedin: Optional[str] = Field(None, description="LinkedIn profile URL")
+    notes: Optional[str] = Field(None, description="Additional notes about the contact")
 
 
 # ============================================================================
@@ -310,13 +310,13 @@ async def delete_contact(contact_id: int, api_key: str = Depends(verify_api_key)
 # WEB UI ENDPOINTS
 # ============================================================================
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def home(request: Request):
     """Home page - redirect to accounts."""
     return RedirectResponse(url="/accounts")
 
 
-@app.get("/accounts", response_class=HTMLResponse)
+@app.get("/accounts", response_class=HTMLResponse, include_in_schema=False)
 async def accounts_page(request: Request):
     """Display all accounts."""
     with get_db() as conn:
@@ -330,7 +330,7 @@ async def accounts_page(request: Request):
     })
 
 
-@app.get("/accounts/{account_id}", response_class=HTMLResponse)
+@app.get("/accounts/{account_id}", response_class=HTMLResponse, include_in_schema=False)
 async def account_detail_page(request: Request, account_id: int):
     """Display account details and associated contacts."""
     with get_db() as conn:
@@ -357,7 +357,7 @@ async def account_detail_page(request: Request, account_id: int):
     })
 
 
-@app.get("/accounts/new", response_class=HTMLResponse)
+@app.get("/accounts/new", response_class=HTMLResponse, include_in_schema=False)
 async def new_account_page(request: Request):
     """Display form to create new account."""
     return templates.TemplateResponse("account_form.html", {
@@ -368,7 +368,7 @@ async def new_account_page(request: Request):
     })
 
 
-@app.post("/accounts/create")
+@app.post("/accounts/create", include_in_schema=False)
 async def create_account_form(
     name: str = Form(...),
     industry: str = Form(""),
@@ -388,7 +388,7 @@ async def create_account_form(
     return RedirectResponse(url="/accounts", status_code=303)
 
 
-@app.get("/accounts/{account_id}/edit", response_class=HTMLResponse)
+@app.get("/accounts/{account_id}/edit", response_class=HTMLResponse, include_in_schema=False)
 async def edit_account_page(request: Request, account_id: int):
     """Display form to edit account."""
     with get_db() as conn:
@@ -407,7 +407,7 @@ async def edit_account_page(request: Request, account_id: int):
     })
 
 
-@app.post("/accounts/{account_id}/update")
+@app.post("/accounts/{account_id}/update", include_in_schema=False)
 async def update_account_form(
     account_id: int,
     name: str = Form(...),
@@ -429,7 +429,7 @@ async def update_account_form(
     return RedirectResponse(url="/accounts", status_code=303)
 
 
-@app.post("/accounts/{account_id}/delete")
+@app.post("/accounts/{account_id}/delete", include_in_schema=False)
 async def delete_account_form(account_id: int):
     """Handle account deletion from form."""
     with get_db() as conn:
@@ -440,7 +440,7 @@ async def delete_account_form(account_id: int):
     return RedirectResponse(url="/accounts", status_code=303)
 
 
-@app.get("/contacts", response_class=HTMLResponse)
+@app.get("/contacts", response_class=HTMLResponse, include_in_schema=False)
 async def contacts_page(request: Request):
     """Display all contacts."""
     with get_db() as conn:
@@ -459,7 +459,7 @@ async def contacts_page(request: Request):
     })
 
 
-@app.get("/contacts/new", response_class=HTMLResponse)
+@app.get("/contacts/new", response_class=HTMLResponse, include_in_schema=False)
 async def new_contact_page(request: Request):
     """Display form to create new contact."""
     with get_db() as conn:
@@ -475,7 +475,7 @@ async def new_contact_page(request: Request):
     })
 
 
-@app.post("/contacts/create")
+@app.post("/contacts/create", include_in_schema=False)
 async def create_contact_form(
     first_name: str = Form(...),
     last_name: str = Form(...),
@@ -499,7 +499,7 @@ async def create_contact_form(
     return RedirectResponse(url="/contacts", status_code=303)
 
 
-@app.get("/contacts/{contact_id}/edit", response_class=HTMLResponse)
+@app.get("/contacts/{contact_id}/edit", response_class=HTMLResponse, include_in_schema=False)
 async def edit_contact_page(request: Request, contact_id: int):
     """Display form to edit contact."""
     with get_db() as conn:
@@ -521,7 +521,7 @@ async def edit_contact_page(request: Request, contact_id: int):
     })
 
 
-@app.post("/contacts/{contact_id}/update")
+@app.post("/contacts/{contact_id}/update", include_in_schema=False)
 async def update_contact_form(
     contact_id: int,
     first_name: str = Form(...),
@@ -547,7 +547,7 @@ async def update_contact_form(
     return RedirectResponse(url="/contacts", status_code=303)
 
 
-@app.post("/contacts/{contact_id}/delete")
+@app.post("/contacts/{contact_id}/delete", include_in_schema=False)
 async def delete_contact_form(contact_id: int):
     """Handle contact deletion from form."""
     with get_db() as conn:
@@ -562,7 +562,7 @@ async def delete_contact_form(contact_id: int):
 # SETTINGS PAGE
 # ============================================================================
 
-@app.get("/settings", response_class=HTMLResponse)
+@app.get("/settings", response_class=HTMLResponse, include_in_schema=False)
 async def settings_page(request: Request):
     """Display settings page."""
     config = get_config()
@@ -572,7 +572,7 @@ async def settings_page(request: Request):
     })
 
 
-@app.post("/settings/save")
+@app.post("/settings/save", include_in_schema=False)
 async def save_settings(
     api_key: str = Form(""),
     base_url: str = Form("http://localhost:8000"),
@@ -593,26 +593,29 @@ async def save_settings(
 # AGENT ENRICHMENT ENDPOINTS
 # ============================================================================
 
-@app.post("/accounts/{account_id}/enrich")
-async def enrich_account(account_id: int, instructions: str = Form(...)):
+@app.post("/accounts/{account_id}/enrich", include_in_schema=False)
+async def enrich_account(account_id: int, instructions: str = Form("")):
     """Trigger account enrichment via AnyQuest agent."""
     config = get_config()
 
     if not config.get("anyquest_api_key"):
         raise HTTPException(status_code=400, detail="AnyQuest API key not configured. Please configure in Settings.")
 
-    # Get account details
+    # Get account details and set state to 1 (enriching)
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM accounts WHERE id = ?", (account_id,))
         account = dict_from_row(cursor.fetchone())
 
-    if not account:
-        raise HTTPException(status_code=404, detail="Account not found")
+        if not account:
+            raise HTTPException(status_code=404, detail="Account not found")
+
+        # Set state to 1 (enriching)
+        cursor.execute("UPDATE accounts SET state = 1 WHERE id = ?", (account_id,))
+        conn.commit()
 
     # Create prompt JSON
     prompt_data = {
-        "instructions": instructions,
         "account": {
             "id": account["id"],
             "name": account["name"],
@@ -621,6 +624,11 @@ async def enrich_account(account_id: int, instructions: str = Form(...)):
             "notes": account.get("notes")
         },
     }
+
+    # Only include instructions if provided
+    if instructions and instructions.strip():
+        prompt_data["instructions"] = instructions
+
     prompt_text = json.dumps(prompt_data, indent=2)
 
     # Call AnyQuest API
@@ -650,13 +658,19 @@ async def enrich_account(account_id: int, instructions: str = Form(...)):
 # WEBHOOK AND WEBSOCKET ENDPOINTS
 # ============================================================================
 
-@app.post("/webhook/{account_id}")
+@app.post("/webhook/{account_id}", include_in_schema=False)
 async def webhook_handler(account_id: int, request: Request):
     """Handle webhook callback from AnyQuest agent."""
     event_type = request.headers.get("aq-event-type", "response")
     body = await request.body()
 
     if event_type == "response":
+        # Reset account state to 0 (ready)
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE accounts SET state = 0 WHERE id = ?", (account_id,))
+            conn.commit()
+
         # Agent completed - notify connected clients
         await manager.send_message(str(account_id), {
             "type": "enrichment_complete",

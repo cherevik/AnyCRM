@@ -20,6 +20,7 @@ def init_database():
             industry TEXT,
             website TEXT,
             notes TEXT,
+            state INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
