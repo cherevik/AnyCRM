@@ -221,6 +221,26 @@ async def delete_account(account_id: int, api_key: str = Depends(verify_api_key)
         return None
 
 
+@app.get("/api/accounts/{account_id}/contacts", tags=["accounts"])
+async def get_account_contacts(account_id: int, api_key: str = Depends(verify_api_key)):
+    """Get all contacts for a specific account."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+
+        # Check if account exists
+        cursor.execute("SELECT * FROM accounts WHERE id = ?", (account_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Account not found")
+
+        # Get contacts for this account
+        cursor.execute(
+            "SELECT * FROM contacts WHERE account_id = ? ORDER BY last_name, first_name",
+            (account_id,)
+        )
+        contacts = [dict_from_row(row) for row in cursor.fetchall()]
+        return contacts
+
+
 # ============================================================================
 # REST API ENDPOINTS - CONTACTS
 # ============================================================================
