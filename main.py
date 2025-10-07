@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 from typing import Optional, List
+from enum import Enum
 import uvicorn
 import httpx
 import json
@@ -77,36 +78,38 @@ async def startup_event():
 
 
 # Industry options
-INDUSTRIES = [
-    "Technology",
-    "Healthcare",
-    "Finance",
-    "Manufacturing",
-    "Retail",
-    "Education",
-    "Real Estate",
-    "Consulting",
-    "Media & Entertainment",
-    "Transportation",
-    "Hospitality",
-    "Energy",
-    "Telecommunications",
-    "Construction",
-    "Agriculture",
-    "Other"
-]
+class IndustryEnum(str, Enum):
+    """Industry sector enumeration."""
+    TECHNOLOGY = "Technology"
+    HEALTHCARE = "Healthcare"
+    FINANCE = "Finance"
+    MANUFACTURING = "Manufacturing"
+    RETAIL = "Retail"
+    EDUCATION = "Education"
+    REAL_ESTATE = "Real Estate"
+    CONSULTING = "Consulting"
+    MEDIA_ENTERTAINMENT = "Media & Entertainment"
+    TRANSPORTATION = "Transportation"
+    HOSPITALITY = "Hospitality"
+    ENERGY = "Energy"
+    TELECOMMUNICATIONS = "Telecommunications"
+    CONSTRUCTION = "Construction"
+    AGRICULTURE = "Agriculture"
+    OTHER = "Other"
+
+INDUSTRIES = [industry.value for industry in IndustryEnum]
 
 # Pydantic models for API
 class AccountCreate(BaseModel):
     name: str = Field(..., description="Company or account name")
-    industry: Optional[str] = Field(None, description="Industry sector (e.g., Technology, Healthcare, Finance)")
+    industry: Optional[IndustryEnum] = Field(None, description="Industry sector")
     website: Optional[str] = Field(None, description="Company website URL")
     notes: Optional[str] = Field(None, description="Additional notes or information about the account")
 
 
 class AccountUpdate(BaseModel):
     name: Optional[str] = Field(None, description="Company or account name")
-    industry: Optional[str] = Field(None, description="Industry sector (e.g., Technology, Healthcare, Finance)")
+    industry: Optional[IndustryEnum] = Field(None, description="Industry sector")
     website: Optional[str] = Field(None, description="Company website URL")
     notes: Optional[str] = Field(None, description="Additional notes or information about the account")
 
@@ -330,6 +333,17 @@ async def accounts_page(request: Request):
     })
 
 
+@app.get("/accounts/new", response_class=HTMLResponse, include_in_schema=False)
+async def new_account_page(request: Request):
+    """Display form to create new account."""
+    return templates.TemplateResponse("account_form.html", {
+        "request": request,
+        "account": None,
+        "industries": INDUSTRIES,
+        "action": "/accounts/create"
+    })
+
+
 @app.get("/accounts/{account_id}", response_class=HTMLResponse, include_in_schema=False)
 async def account_detail_page(request: Request, account_id: int):
     """Display account details and associated contacts."""
@@ -354,17 +368,6 @@ async def account_detail_page(request: Request, account_id: int):
         "request": request,
         "account": account,
         "contacts": contacts
-    })
-
-
-@app.get("/accounts/new", response_class=HTMLResponse, include_in_schema=False)
-async def new_account_page(request: Request):
-    """Display form to create new account."""
-    return templates.TemplateResponse("account_form.html", {
-        "request": request,
-        "account": None,
-        "industries": INDUSTRIES,
-        "action": "/accounts/create"
     })
 
 

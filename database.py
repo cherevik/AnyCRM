@@ -50,6 +50,8 @@ def get_db():
     """Context manager for database connections."""
     conn = sqlite3.connect(DATABASE_NAME)
     conn.row_factory = sqlite3.Row
+    # Enable foreign key constraints
+    conn.execute("PRAGMA foreign_keys = ON")
     try:
         yield conn
     finally:

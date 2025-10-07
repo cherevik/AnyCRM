@@ -15,6 +15,11 @@
         </div>
 
         <div class="form-group">
+            <label for="website">Website</label>
+            <input type="url" id="website" name="website" value="{{ account.website if account else '' }}">
+        </div>
+
+        <div class="form-group">
             <label for="industry">Industry</label>
             <select id="industry" name="industry">
                 <option value="">-- Select Industry --</option>
@@ -24,11 +29,6 @@
                 </option>
                 {% endfor %}
             </select>
-        </div>
-
-        <div class="form-group">
-            <label for="website">Website</label>
-            <input type="url" id="website" name="website" value="{{ account.website if account else '' }}">
         </div>
 
         <div class="form-group">
