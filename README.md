@@ -163,7 +163,6 @@ To make your local AnyCRM instance accessible from the internet (useful for test
 4. **Connect AnyCRM to the agent** 
    - Open AnyCRM replit URL or ngrok URL in the browser 
    - Switch to the Settings tab
-   - Enter https://api.anyquest.ai in the AnyQuest API URL field 
    - Paste the agent API key in the Enrichment Agent API Key field
    - Click Save Settings 
 
