@@ -1,6 +1,6 @@
 # AnyCRM
 
-A simple, self-contained CRM application built with Python, FastAPI, SQLite, and AnyQuest. Perfect for learning how to integrate AI agents into a business application so that the application can all AI agents and agents can use services provided by the application. 
+A simple, self-contained CRM application built with Python, FastAPI, SQLite, and AnyQuest. Perfect for learning how to integrate AI agents into a business application so that the application can invoke AI agents and agents can use services provided by the application. 
 
 ![AnyCRM Architecture](architecture.png)
 
