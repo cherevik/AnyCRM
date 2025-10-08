@@ -191,3 +191,6 @@ AnyCRM/
 └── static/             # Static files (currently empty)
 ```
 
+![AnyCRM](screenshot.png)
+
+
