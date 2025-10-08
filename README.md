@@ -1,6 +1,8 @@
 # AnyCRM
 
-A simple, self-contained CRM application built with Python, FastAPI, SQLite, and AnyQuest. Perfect for learning how to integrate AI agents as services into a business application. 
+A simple, self-contained CRM application built with Python, FastAPI, SQLite, and AnyQuest. Perfect for learning how to integrate AI agents into a business application so that the application can all AI agents and agents can use services provided by the application. 
+
+![AnyCRM Architecture](architecture.png)
 
 ## Features
 
@@ -114,11 +116,6 @@ To make your local AnyCRM instance accessible from the internet (useful for test
    - Use this URL to access your AnyCRM from anywhere
    - API endpoints will be available at: `https://abc123.ngrok.io/api/accounts`
    - Web UI will be available at: `https://abc123.ngrok.io`
-
-5. **Update AnyQuest configuration (if using AI features)**
-   - Go to Settings in your AnyCRM application
-   - Update the "Base URL" to your ngrok URL (e.g., `https://abc123.ngrok.io`)
-   - This ensures AI agents can callback to your application properly
 
 **Note**: The free ngrok tier provides temporary URLs that change each time you restart ngrok. For persistent URLs, consider upgrading to a paid ngrok plan.
 
