@@ -28,7 +28,7 @@ A simple, self-contained CRM application built with Python, FastAPI, SQLite, and
 
 1. **Clone or download this repository**
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/cherevik/AnyCRM.git
    cd AnyCRM
    ```
 
