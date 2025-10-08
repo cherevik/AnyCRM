@@ -1,6 +1,6 @@
 # AnyCRM
 
-A simple, self-contained CRM application built with Python, FastAPI, and SQLite. Perfect for learning, prototyping, or as a starting point for your own CRM system.
+A simple, self-contained CRM application built with Python, FastAPI, SQLite, and AnyQuest. Perfect for learning how to integrate AI agents as services into a business application. 
 
 ## Features
 
@@ -17,6 +17,8 @@ A simple, self-contained CRM application built with Python, FastAPI, and SQLite.
 
 - Python 3.8 or higher
 - pip (Python package installer)
+- AnyQuest account
+- ngrok (optional, for creating external URLs) 
 
 ### Installation & Running
 
@@ -85,10 +87,94 @@ A simple, self-contained CRM application built with Python, FastAPI, and SQLite.
 3. Click the "Run" button
 4. The application will start and be accessible via the Replit URL
 
+### Creating an External URL with ngrok
+
+To make your local AnyCRM instance accessible from the internet (useful for testing webhooks, sharing with team members, or integrating with external services):
+
+1. **Install ngrok**
+   - Visit [ngrok.com](https://ngrok.com) and create a free account
+   - Download and install ngrok for your operating system
+   - Authenticate ngrok with your account token:
+     ```bash
+     ngrok config add-authtoken YOUR_AUTH_TOKEN
+     ```
+
+2. **Start your AnyCRM application**
+   ```bash
+   python main.py
+   ```
+
+3. **In a new terminal, create a tunnel to your local server**
+   ```bash
+   ngrok http 8000
+   ```
+
+4. **Access your application via the ngrok URL**
+   - ngrok will display URLs like: `https://abc123.ngrok.io`
+   - Use this URL to access your AnyCRM from anywhere
+   - API endpoints will be available at: `https://abc123.ngrok.io/api/accounts`
+   - Web UI will be available at: `https://abc123.ngrok.io`
+
+5. **Update AnyQuest configuration (if using AI features)**
+   - Go to Settings in your AnyCRM application
+   - Update the "Base URL" to your ngrok URL (e.g., `https://abc123.ngrok.io`)
+   - This ensures AI agents can callback to your application properly
+
+**Note**: The free ngrok tier provides temporary URLs that change each time you restart ngrok. For persistent URLs, consider upgrading to a paid ngrok plan.
+
+
+## Configuring AI Agent 
+
+### Creating AnyQuest Workspace 
+
+1. **Create a new workspace on AnyQuest**
+   - Navigate to the Workspaces panel on AnyQuest 
+   - Click on the + button in the lower right corner 
+   - Enter a name for the new workspace 
+   - Click Submit 
+
+2. **Instantiate the workspace template**
+   - Open the workspace by clicking on its entry in the list of workspaces
+   - Click on the three dots icon in the upper right corner
+   - Select Import Template in the menu 
+   - Select the anycrm-template.aqt file in this project folder 
+
+### Configuring AnyQuest Agent and AnyCRM 
+
+1. **Configure AnyCRM API** 
+   - Open AnyCRM replit URL or ngrok URL in the browser 
+   - Switch to the Settings tab 
+   - Enter the replit URL or the ngrok URK in the Base URL field 
+   - Click Save Settings  
+
+2. **Configure the AnyCRM tool in the workspace**
+   - Select the Settings tab in the AnyQuest workspace view
+   - Click on Tools in the left sidebar 
+   - Click on the three dots icon in the AnyCRM row and choose Properties 
+   - Enter the Replit URL or the ngrok URL in the OpenAPI Spec URL field
+   - Copy the Token value from AnyCRM settings to the Token field 
+   - Click Submit
+
+3. **Configure the agent integration**
+   - Select the Agents tab in the AnyQuest workspace view 
+   - Select the Enrich Account agent in the list 
+   - Select the Integrations tab in the agent view 
+   - Click on the + button in the lower right corner 
+   - Select Web API, click Continue, click Create 
+   - Click Copy to copy the agent API key 
+
+4. **Connect AnyCRM to the agent** 
+   - Open AnyCRM replit URL or ngrok URL in the browser 
+   - Switch to the Settings tab
+   - Enter https://api.anyquest.ai in the AnyQuest API URL field 
+   - Paste the agent API key in the Enrichment Agent API Key field
+   - Click Save Settings 
+
 ## Project Structure
 
 ```
 AnyCRM/
+├── anycrm-template.aqt  # AnyQuest workspace template 
 ├── main.py              # Main application file with FastAPI routes
 ├── database.py          # Database models and initialization
 ├── config.py            # Configuration management
@@ -108,186 +194,3 @@ AnyCRM/
 └── static/             # Static files (currently empty)
 ```
 
-## Database Schema
-
-### Accounts Table
-- `id` - Integer, Primary Key, Auto-increment
-- `name` - Text, Required
-- `industry` - Text, Optional (dropdown selection)
-- `website` - Text, Optional
-- `notes` - Text, Optional
-- `state` - Integer, Default 0 (internal: 0=ready, 1=enriching)
-- `created_at` - Timestamp, Auto-generated
-
-### Contacts Table
-- `id` - Integer, Primary Key, Auto-increment
-- `account_id` - Integer, Foreign Key to Accounts, Optional
-- `first_name` - Text, Required
-- `last_name` - Text, Required
-- `title` - Text, Optional
-- `email` - Text, Optional
-- `linkedin` - Text, Optional
-- `notes` - Text, Optional
-- `created_at` - Timestamp, Auto-generated
-
-## REST API Endpoints
-
-All REST API endpoints require Bearer token authentication. Include your API key in the `Authorization` header:
-```
-Authorization: Bearer YOUR_API_KEY
-```
-
-You can find your API key in the Settings page after starting the application.
-
-### Accounts
-
-- `POST /api/accounts` - Create a new account
-- `GET /api/accounts` - Get all accounts
-- `GET /api/accounts/{id}` - Get a specific account
-- `PUT /api/accounts/{id}` - Update an account
-- `DELETE /api/accounts/{id}` - Delete an account
-
-### Contacts
-
-- `POST /api/contacts` - Create a new contact
-- `GET /api/contacts` - Get all contacts
-- `GET /api/contacts/{id}` - Get a specific contact
-- `PUT /api/contacts/{id}` - Update a contact
-- `DELETE /api/contacts/{id}` - Delete a contact
-
-### API Documentation
-
-The OpenAPI specification is automatically generated and available at:
-- **Swagger UI**: http://localhost:8000/docs (click "Authorize" to enter your API key)
-- **ReDoc**: http://localhost:8000/redoc
-- **OpenAPI JSON**: http://localhost:8000/openapi.json
-
-## Usage Examples
-
-### Using the Web UI
-
-1. Navigate to http://localhost:8000
-2. Use the navigation menu to switch between Accounts, Contacts, and Settings
-3. Click "New Account" or "New Contact" to create records
-4. Click on an account name to view details and associated contacts
-5. Click "Enrich Account" to trigger AI-powered account enrichment (requires AnyQuest API key)
-6. Click "Edit" to modify existing records
-7. Click "Delete" to remove records (with confirmation)
-
-### Configuring AI Agent Integration
-
-1. Navigate to Settings (http://localhost:8000/settings)
-2. Under "AnyQuest Agent Configuration", enter your AnyQuest API key and URL
-3. The Base URL is automatically configured for your application server
-4. Save the configuration
-5. Go to any account detail page and click "Enrich Account" to trigger enrichment
-6. The page will update in real-time when enrichment completes
-
-### Using the REST API
-
-Replace `YOUR_API_KEY` with your actual API key from the Settings page.
-
-#### Create an Account
-```bash
-curl -X POST "http://localhost:8000/api/accounts" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Acme Corporation",
-    "industry": "Technology",
-    "website": "https://acme.com",
-    "notes": "Potential client"
-  }'
-```
-
-#### Get All Accounts
-```bash
-curl "http://localhost:8000/api/accounts" \
-  -H "Authorization: Bearer YOUR_API_KEY"
-```
-
-#### Create a Contact
-```bash
-curl -X POST "http://localhost:8000/api/contacts" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "first_name": "John",
-    "last_name": "Doe",
-    "title": "CEO",
-    "email": "john.doe@acme.com",
-    "linkedin": "https://linkedin.com/in/johndoe",
-    "account_id": 1
-  }'
-```
-
-#### Update a Contact
-```bash
-curl -X PUT "http://localhost:8000/api/contacts/1" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Senior Manager",
-    "notes": "Prefers email communication"
-  }'
-```
-
-#### Delete an Account
-```bash
-curl -X DELETE "http://localhost:8000/api/accounts/1" \
-  -H "Authorization: Bearer YOUR_API_KEY"
-```
-
-## Development
-
-### Running in Development Mode
-
-The application runs with auto-reload enabled by default. Any changes to the Python files will automatically restart the server.
-
-### Customization
-
-- **Styling**: Modify `templates/base.html` to change the look and feel
-- **Database**: Add fields by modifying `database.py` and `main.py`
-- **Features**: Add new endpoints in `main.py`
-
-## Technologies Used
-
-- **FastAPI** - Modern, fast web framework for building APIs
-- **Uvicorn** - ASGI server for running FastAPI applications
-- **SQLite** - Lightweight, serverless database
-- **Jinja2** - Template engine for rendering HTML
-- **WebSockets** - Real-time communication for enrichment updates
-- **httpx** - Async HTTP client for API calls
-- **Python 3.8+** - Programming language
-
-## License
-
-This project is open source and available for educational and commercial use.
-
-## Contributing
-
-Feel free to fork this project and customize it for your needs. Pull requests are welcome!
-
-## Troubleshooting
-
-### Port Already in Use
-If port 8000 is already in use, modify the `main.py` file and change the port number:
-```python
-uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
-```
-
-### Database Issues
-If you encounter database errors about missing columns, run the migration script:
-```bash
-python migrate_db.py
-```
-
-To start completely fresh, delete `anycrm.db` and restart the application to create a new database.
-
-### Module Not Found Errors
-Make sure you've activated your virtual environment and installed all dependencies:
-```bash
-source venv/bin/activate  # Mac/Linux
-venv\Scripts\activate     # Windows
-pip install -r requirements.txt
-```
