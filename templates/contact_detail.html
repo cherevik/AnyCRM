@@ -3,15 +3,15 @@
 {% block title %}{{ contact.first_name }} {{ contact.last_name }}{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="header">
-        <h1>{{ contact.first_name }} {{ contact.last_name }}</h1>
-        <div style="margin: 20px 0;">
-            <a href="/contacts/{{ contact.id }}/edit?next={{ request.url.path }}" class="btn">Edit</a>
-            <a href="{{ request.query_params.get('next', '/contacts') }}" class="btn btn-secondary">Back to Contacts</a>
-        </div>
+<div class="page-header">
+    <h2>{{ contact.first_name }} {{ contact.last_name }}</h2>
+    <div>
+        <a href="/contacts/{{ contact.id }}/edit?next={{ request.url.path }}" class="btn">Edit</a>
+        <a href="{{ request.query_params.get('next', '/contacts') }}" class="btn btn-secondary">Back to Contacts</a>
     </div>
+</div>
 
+<div class="container">
     <div class="details-grid">
         <div class="details-section">
             <h2>Contact Information</h2>
