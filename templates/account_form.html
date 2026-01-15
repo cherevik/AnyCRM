@@ -9,6 +9,9 @@
 
 <div class="card">
     <form method="post" action="{{ action }}">
+        {% if next_url %}
+        <input type="hidden" name="next" value="{{ next_url }}">
+        {% endif %}
         <div class="form-group">
             <label for="name">Name *</label>
             <input type="text" id="name" name="name" value="{{ account.name if account else '' }}" required>
@@ -38,7 +41,7 @@
 
         <div class="form-actions">
             <button type="submit" class="btn">Save</button>
-            <a href="/accounts" class="btn btn-secondary">Cancel</a>
+            <a href="{{ next_url if next_url else '/accounts' }}" class="btn btn-secondary">Cancel</a>
         </div>
     </form>
 </div>

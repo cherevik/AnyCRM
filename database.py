@@ -21,7 +21,8 @@ def init_database():
             website TEXT,
             notes TEXT,
             state INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
@@ -37,9 +38,37 @@ def init_database():
             linkedin TEXT,
             notes TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE
         )
     """)
+    
+    # Create contact_logs table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS contact_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            contact_id INTEGER NOT NULL,
+            subject TEXT NOT NULL,
+            contact_type TEXT NOT NULL,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (contact_id) REFERENCES contacts (id) ON DELETE CASCADE
+        )
+    """)
+    
+    # Migration: Add updated_at column if it doesn't exist
+    try:
+        cursor.execute("SELECT updated_at FROM accounts LIMIT 1")
+    except sqlite3.OperationalError:
+        # SQLite doesn't support non-constant defaults in ALTER TABLE
+        cursor.execute("ALTER TABLE accounts ADD COLUMN updated_at TIMESTAMP")
+        cursor.execute("UPDATE accounts SET updated_at = created_at")
+    
+    try:
+        cursor.execute("SELECT updated_at FROM contacts LIMIT 1")
+    except sqlite3.OperationalError:
+        cursor.execute("ALTER TABLE contacts ADD COLUMN updated_at TIMESTAMP")
+        cursor.execute("UPDATE contacts SET updated_at = created_at")
 
     conn.commit()
     conn.close()

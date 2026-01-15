@@ -26,6 +26,9 @@ app = FastAPI(
     ]
 )
 
+# Constants
+PAGE_SIZE = 20
+
 # Security scheme
 security = HTTPBearer()
 
@@ -144,8 +147,8 @@ async def create_account(account: AccountCreate, api_key: str = Depends(verify_a
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            """INSERT INTO accounts (name, industry, website, notes)
-               VALUES (?, ?, ?, ?)""",
+            """INSERT INTO accounts (name, industry, website, notes, updated_at)
+               VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)""",
             (account.name, account.industry, account.website, account.notes)
         )
         conn.commit()
@@ -156,13 +159,83 @@ async def create_account(account: AccountCreate, api_key: str = Depends(verify_a
 
 
 @app.get("/api/accounts", tags=["accounts"])
-async def get_accounts(api_key: str = Depends(verify_api_key)):
-    """Get all accounts."""
+async def get_accounts(api_key: str = Depends(verify_api_key), page: int = 1, page_size: int = PAGE_SIZE):
+    """Get all accounts with pagination."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM accounts ORDER BY created_at DESC")
+        
+        # Get total count
+        cursor.execute("SELECT COUNT(*) as count FROM accounts")
+        total = cursor.fetchone()[0]
+        total_pages = (total + page_size - 1) // page_size
+        
+        # Get paginated results
+        offset = (page - 1) * page_size
+        cursor.execute(
+            "SELECT * FROM accounts ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            (page_size, offset)
+        )
         accounts = [dict_from_row(row) for row in cursor.fetchall()]
-        return accounts
+        
+        return {
+            "accounts": accounts,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages
+        }
+
+
+@app.get("/api/accounts/search", include_in_schema=False)
+async def search_accounts(q: str, page: int = 1, page_size: int = PAGE_SIZE, sort_by: str = "created_at", sort_order: str = "desc"):
+    """Search accounts by name, industry, website, or notes. No auth required for web UI."""
+    if len(q) < 3:
+        return {"accounts": [], "total": 0, "page": page, "page_size": page_size, "total_pages": 0}
+    
+    # Validate sort parameters
+    valid_sort_fields = ["name", "industry", "created_at", "updated_at"]
+    if sort_by not in valid_sort_fields:
+        sort_by = "created_at"
+    if sort_order not in ["asc", "desc"]:
+        sort_order = "desc"
+    
+    with get_db() as conn:
+        cursor = conn.cursor()
+        search_pattern = f"%{q}%"
+        
+        # Get total count
+        cursor.execute(
+            """SELECT COUNT(*) as count FROM accounts 
+               WHERE name LIKE ? 
+                  OR industry LIKE ? 
+                  OR website LIKE ? 
+                  OR notes LIKE ?""",
+            (search_pattern, search_pattern, search_pattern, search_pattern)
+        )
+        total = cursor.fetchone()[0]
+        total_pages = (total + page_size - 1) // page_size
+        
+        # Get paginated results with sorting
+        offset = (page - 1) * page_size
+        query = f"""SELECT * FROM accounts 
+               WHERE name LIKE ? 
+                  OR industry LIKE ? 
+                  OR website LIKE ? 
+                  OR notes LIKE ?
+               ORDER BY {sort_by} {sort_order.upper()}
+               LIMIT ? OFFSET ?"""
+        cursor.execute(query,
+            (search_pattern, search_pattern, search_pattern, search_pattern, page_size, offset)
+        )
+        accounts = [dict_from_row(row) for row in cursor.fetchall()]
+        
+        return {
+            "accounts": accounts,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages
+        }
 
 
 @app.get("/api/accounts/{account_id}", tags=["accounts"])
@@ -198,6 +271,7 @@ async def update_account(account_id: int, account: AccountUpdate, api_key: str =
             values.append(value)
 
         if updates:
+            updates.append("updated_at = CURRENT_TIMESTAMP")
             values.append(account_id)
             query = f"UPDATE accounts SET {', '.join(updates)} WHERE id = ?"
             cursor.execute(query, values)
@@ -251,8 +325,8 @@ async def create_contact(contact: ContactCreate, api_key: str = Depends(verify_a
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            """INSERT INTO contacts (account_id, first_name, last_name, title, email, linkedin, notes)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO contacts (account_id, first_name, last_name, title, email, linkedin, notes, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
             (contact.account_id, contact.first_name, contact.last_name,
              contact.title, contact.email, contact.linkedin, contact.notes)
         )
@@ -264,13 +338,104 @@ async def create_contact(contact: ContactCreate, api_key: str = Depends(verify_a
 
 
 @app.get("/api/contacts", tags=["contacts"])
-async def get_contacts(api_key: str = Depends(verify_api_key)):
-    """Get all contacts."""
+async def get_contacts(api_key: str = Depends(verify_api_key), page: int = 1, page_size: int = PAGE_SIZE):
+    """Get all contacts with pagination."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM contacts ORDER BY created_at DESC")
+        
+        # Get total count
+        cursor.execute("SELECT COUNT(*) as count FROM contacts")
+        total = cursor.fetchone()[0]
+        total_pages = (total + page_size - 1) // page_size
+        
+        # Get paginated results
+        offset = (page - 1) * page_size
+        cursor.execute(
+            "SELECT * FROM contacts ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            (page_size, offset)
+        )
         contacts = [dict_from_row(row) for row in cursor.fetchall()]
-        return contacts
+        
+        return {
+            "contacts": contacts,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages
+        }
+
+
+@app.get("/api/contacts/search", include_in_schema=False)
+async def search_contacts(q: str, page: int = 1, page_size: int = PAGE_SIZE, sort_by: str = "created_at", sort_order: str = "desc"):
+    """Search contacts by name, title, email, account, or notes. No auth required for web UI."""
+    if len(q) < 3:
+        return {"contacts": [], "total": 0, "page": page, "page_size": page_size, "total_pages": 0}
+    
+    # Validate sort parameters
+    valid_sort_fields = ["last_name", "account_name", "created_at", "updated_at"]
+    if sort_by not in valid_sort_fields:
+        sort_by = "created_at"
+    if sort_order not in ["asc", "desc"]:
+        sort_order = "desc"
+    
+    with get_db() as conn:
+        cursor = conn.cursor()
+        search_pattern = f"%{q}%"
+        
+        # Get total count
+        cursor.execute(
+            """SELECT COUNT(*) as count
+               FROM contacts c
+               LEFT JOIN accounts a ON c.account_id = a.id
+               WHERE c.first_name LIKE ? 
+                  OR c.last_name LIKE ? 
+                  OR c.title LIKE ? 
+                  OR c.email LIKE ?
+                  OR c.notes LIKE ?
+                  OR a.name LIKE ?""",
+            (search_pattern, search_pattern, search_pattern, search_pattern, search_pattern, search_pattern)
+        )
+        total = cursor.fetchone()[0]
+        total_pages = (total + page_size - 1) // page_size
+        
+        # Get paginated results with sorting
+        offset = (page - 1) * page_size
+        if sort_by == "account_name":
+            query = f"""SELECT c.*, a.name as account_name
+               FROM contacts c
+               LEFT JOIN accounts a ON c.account_id = a.id
+               WHERE c.first_name LIKE ? 
+                  OR c.last_name LIKE ? 
+                  OR c.title LIKE ? 
+                  OR c.email LIKE ?
+                  OR c.notes LIKE ?
+                  OR a.name LIKE ?
+               ORDER BY a.name {sort_order.upper()}, c.last_name {sort_order.upper()}
+               LIMIT ? OFFSET ?"""
+        else:
+            query = f"""SELECT c.*, a.name as account_name
+               FROM contacts c
+               LEFT JOIN accounts a ON c.account_id = a.id
+               WHERE c.first_name LIKE ? 
+                  OR c.last_name LIKE ? 
+                  OR c.title LIKE ? 
+                  OR c.email LIKE ?
+                  OR c.notes LIKE ?
+                  OR a.name LIKE ?
+               ORDER BY c.{sort_by} {sort_order.upper()}
+               LIMIT ? OFFSET ?"""
+        cursor.execute(query,
+            (search_pattern, search_pattern, search_pattern, search_pattern, search_pattern, search_pattern, page_size, offset)
+        )
+        contacts = [dict_from_row(row) for row in cursor.fetchall()]
+        
+        return {
+            "contacts": contacts,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages
+        }
 
 
 @app.get("/api/contacts/{contact_id}", tags=["contacts"])
@@ -306,6 +471,7 @@ async def update_contact(contact_id: int, contact: ContactUpdate, api_key: str =
             values.append(value)
 
         if updates:
+            updates.append("updated_at = CURRENT_TIMESTAMP")
             values.append(contact_id)
             query = f"UPDATE contacts SET {', '.join(updates)} WHERE id = ?"
             cursor.execute(query, values)
@@ -340,16 +506,38 @@ async def home(request: Request):
 
 
 @app.get("/accounts", response_class=HTMLResponse, include_in_schema=False)
-async def accounts_page(request: Request):
-    """Display all accounts."""
+async def accounts_page(request: Request, page: int = 1, page_size: int = PAGE_SIZE, sort_by: str = "created_at", sort_order: str = "desc"):
+    """Display all accounts with pagination and sorting."""
+    # Validate sort parameters
+    valid_sort_fields = ["name", "industry", "created_at", "updated_at"]
+    if sort_by not in valid_sort_fields:
+        sort_by = "created_at"
+    if sort_order not in ["asc", "desc"]:
+        sort_order = "desc"
+    
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM accounts ORDER BY created_at DESC")
+        
+        # Get total count
+        cursor.execute("SELECT COUNT(*) as count FROM accounts")
+        total = cursor.fetchone()[0]
+        total_pages = (total + page_size - 1) // page_size
+        
+        # Get paginated results with sorting
+        offset = (page - 1) * page_size
+        query = f"SELECT * FROM accounts ORDER BY {sort_by} {sort_order.upper()} LIMIT ? OFFSET ?"
+        cursor.execute(query, (page_size, offset))
         accounts = [dict_from_row(row) for row in cursor.fetchall()]
 
     return templates.TemplateResponse("accounts.html", {
         "request": request,
-        "accounts": accounts
+        "accounts": accounts,
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": total_pages,
+        "sort_by": sort_by,
+        "sort_order": sort_order
     })
 
 
@@ -402,8 +590,8 @@ async def create_account_form(
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            """INSERT INTO accounts (name, industry, website, notes)
-               VALUES (?, ?, ?, ?)""",
+            """INSERT INTO accounts (name, industry, website, notes, updated_at)
+               VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)""",
             (name, industry or None, website or None, notes or None)
         )
         conn.commit()
@@ -422,11 +610,13 @@ async def edit_account_page(request: Request, account_id: int):
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
 
+    next_url = request.query_params.get("next", "")
     return templates.TemplateResponse("account_form.html", {
         "request": request,
         "account": account,
         "industries": INDUSTRIES,
-        "action": f"/accounts/{account_id}/update"
+        "action": f"/accounts/{account_id}/update",
+        "next_url": next_url
     })
 
 
@@ -436,20 +626,22 @@ async def update_account_form(
     name: str = Form(...),
     industry: str = Form(""),
     website: str = Form(""),
-    notes: str = Form("")
+    notes: str = Form(""),
+    next: str = Form("")
 ):
     """Handle account update from form."""
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
             """UPDATE accounts
-               SET name = ?, industry = ?, website = ?, notes = ?
+               SET name = ?, industry = ?, website = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
                WHERE id = ?""",
             (name, industry or None, website or None, notes or None, account_id)
         )
         conn.commit()
 
-    return RedirectResponse(url="/accounts", status_code=303)
+    redirect_url = next if next else "/accounts"
+    return RedirectResponse(url=redirect_url, status_code=303)
 
 
 @app.post("/accounts/{account_id}/delete", include_in_schema=False)
@@ -464,21 +656,54 @@ async def delete_account_form(account_id: int):
 
 
 @app.get("/contacts", response_class=HTMLResponse, include_in_schema=False)
-async def contacts_page(request: Request):
-    """Display all contacts."""
+async def contacts_page(request: Request, page: int = 1, page_size: int = PAGE_SIZE, sort_by: str = "created_at", sort_order: str = "desc"):
+    """Display all contacts with pagination and sorting."""
+    # Validate sort parameters
+    valid_sort_fields = ["last_name", "account_name", "created_at", "updated_at"]
+    if sort_by not in valid_sort_fields:
+        sort_by = "created_at"
+    if sort_order not in ["asc", "desc"]:
+        sort_order = "desc"
+    
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT c.*, a.name as account_name
-            FROM contacts c
-            LEFT JOIN accounts a ON c.account_id = a.id
-            ORDER BY c.created_at DESC
-        """)
+        
+        # Get total count
+        cursor.execute("SELECT COUNT(*) as count FROM contacts")
+        total = cursor.fetchone()[0]
+        total_pages = (total + page_size - 1) // page_size
+        
+        # Get paginated results with sorting
+        offset = (page - 1) * page_size
+        # For sorting by account name, we need to handle the JOIN
+        if sort_by == "account_name":
+            query = f"""
+                SELECT c.*, a.name as account_name
+                FROM contacts c
+                LEFT JOIN accounts a ON c.account_id = a.id
+                ORDER BY a.name {sort_order.upper()}, c.last_name {sort_order.upper()}
+                LIMIT ? OFFSET ?
+            """
+        else:
+            query = f"""
+                SELECT c.*, a.name as account_name
+                FROM contacts c
+                LEFT JOIN accounts a ON c.account_id = a.id
+                ORDER BY c.{sort_by} {sort_order.upper()}
+                LIMIT ? OFFSET ?
+            """
+        cursor.execute(query, (page_size, offset))
         contacts = [dict_from_row(row) for row in cursor.fetchall()]
 
     return templates.TemplateResponse("contacts.html", {
         "request": request,
-        "contacts": contacts
+        "contacts": contacts,
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": total_pages,
+        "sort_by": sort_by,
+        "sort_order": sort_order
     })
 
 
@@ -512,8 +737,8 @@ async def create_contact_form(
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            """INSERT INTO contacts (account_id, first_name, last_name, title, email, linkedin, notes)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO contacts (account_id, first_name, last_name, title, email, linkedin, notes, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
             (account_id or None, first_name, last_name, title or None,
              email or None, linkedin or None, notes or None)
         )
@@ -536,11 +761,13 @@ async def edit_contact_page(request: Request, contact_id: int):
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
 
+    next_url = request.query_params.get("next", "")
     return templates.TemplateResponse("contact_form.html", {
         "request": request,
         "contact": contact,
         "accounts": accounts,
-        "action": f"/contacts/{contact_id}/update"
+        "action": f"/contacts/{contact_id}/update",
+        "next_url": next_url
     })
 
 
@@ -553,21 +780,23 @@ async def update_contact_form(
     title: str = Form(""),
     email: str = Form(""),
     linkedin: str = Form(""),
-    notes: str = Form("")
+    notes: str = Form(""),
+    next: str = Form("")
 ):
     """Handle contact update from form."""
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
             """UPDATE contacts
-               SET account_id = ?, first_name = ?, last_name = ?, title = ?, email = ?, linkedin = ?, notes = ?
+               SET account_id = ?, first_name = ?, last_name = ?, title = ?, email = ?, linkedin = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
                WHERE id = ?""",
             (account_id or None, first_name, last_name, title or None,
              email or None, linkedin or None, notes or None, contact_id)
         )
         conn.commit()
 
-    return RedirectResponse(url="/contacts", status_code=303)
+    redirect_url = next if next else "/contacts"
+    return RedirectResponse(url=redirect_url, status_code=303)
 
 
 @app.post("/contacts/{contact_id}/delete", include_in_schema=False)
@@ -579,6 +808,59 @@ async def delete_contact_form(contact_id: int):
         conn.commit()
 
     return RedirectResponse(url="/contacts", status_code=303)
+
+
+@app.get("/contacts/{contact_id}", response_class=HTMLResponse, include_in_schema=False)
+async def contact_detail_page(request: Request, contact_id: int):
+    """Display contact details, account info, and contact logs."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        
+        # Get contact details with account info
+        cursor.execute("""
+            SELECT c.*, a.name as account_name, a.industry, a.website
+            FROM contacts c
+            LEFT JOIN accounts a ON c.account_id = a.id
+            WHERE c.id = ?
+        """, (contact_id,))
+        contact = dict_from_row(cursor.fetchone())
+        
+        if not contact:
+            raise HTTPException(status_code=404, detail="Contact not found")
+        
+        # Get contact logs
+        cursor.execute("""
+            SELECT * FROM contact_logs
+            WHERE contact_id = ?
+            ORDER BY created_at DESC
+        """, (contact_id,))
+        logs = [dict_from_row(row) for row in cursor.fetchall()]
+    
+    return templates.TemplateResponse("contact_detail.html", {
+        "request": request,
+        "contact": contact,
+        "logs": logs
+    })
+
+
+@app.post("/contacts/{contact_id}/logs/create", include_in_schema=False)
+async def create_contact_log(
+    contact_id: int,
+    subject: str = Form(...),
+    contact_type: str = Form(...),
+    notes: str = Form("")
+):
+    """Handle contact log creation from form."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """INSERT INTO contact_logs (contact_id, subject, contact_type, notes)
+               VALUES (?, ?, ?, ?)""",
+            (contact_id, subject, contact_type, notes or None)
+        )
+        conn.commit()
+    
+    return RedirectResponse(url=f"/contacts/{contact_id}", status_code=303)
 
 
 # ============================================================================

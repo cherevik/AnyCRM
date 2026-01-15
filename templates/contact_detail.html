@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}{{ contact.first_name }} {{ contact.last_name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="header">
+        <h1>{{ contact.first_name }} {{ contact.last_name }}</h1>
+        <div style="margin: 20px 0;">
+            <a href="/contacts/{{ contact.id }}/edit?next={{ request.url.path }}" class="btn">Edit</a>
+            <a href="{{ request.query_params.get('next', '/contacts') }}" class="btn btn-secondary">Back to Contacts</a>
+        </div>
+    </div>
+
+    <div class="details-grid">
+        <div class="details-section">
+            <h2>Contact Information</h2>
+            <div class="detail-row">
+                <span class="detail-label">Name:</span>
+                <span>{{ contact.first_name }} {{ contact.last_name }}</span>
+            </div>
+            {% if contact.title %}
+            <div class="detail-row">
+                <span class="detail-label">Title:</span>
+                <span>{{ contact.title }}</span>
+            </div>
+            {% endif %}
+            {% if contact.email %}
+            <div class="detail-row">
+                <span class="detail-label">Email:</span>
+                <span><a href="mailto:{{ contact.email }}">{{ contact.email }}</a></span>
+            </div>
+            {% endif %}
+            {% if contact.linkedin %}
+            <div class="detail-row">
+                <span class="detail-label">LinkedIn:</span>
+                <span><a href="{{ contact.linkedin }}" target="_blank">{{ contact.linkedin }}</a></span>
+            </div>
+            {% endif %}
+            {% if contact.notes %}
+            <div class="detail-row">
+                <span class="detail-label">Notes:</span>
+                <span>{{ contact.notes }}</span>
+            </div>
+            {% endif %}
+            <div class="detail-row">
+                <span class="detail-label">Created:</span>
+                <span>{{ contact.created_at }}</span>
+            </div>
+            {% if contact.updated_at %}
+            <div class="detail-row">
+                <span class="detail-label">Last Updated:</span>
+                <span>{{ contact.updated_at }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="details-section">
+            <h2>Account Information</h2>
+            {% if contact.account_id %}
+            <div class="detail-row">
+                <span class="detail-label">Account:</span>
+                <span><a href="/accounts/{{ contact.account_id }}">{{ contact.account_name }}</a></span>
+            </div>
+            {% if contact.industry %}
+            <div class="detail-row">
+                <span class="detail-label">Industry:</span>
+                <span>{{ contact.industry }}</span>
+            </div>
+            {% endif %}
+            {% if contact.website %}
+            <div class="detail-row">
+                <span class="detail-label">Website:</span>
+                <span><a href="{{ contact.website }}" target="_blank">{{ contact.website }}</a></span>
+            </div>
+            {% endif %}
+            {% else %}
+            <p>No account associated</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="logs-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 style="margin-bottom: 0;">Contact Log</h2>
+            <button onclick="toggleLogForm()" class="btn" id="toggleFormBtn" style="padding: 8px 16px;">
+                <span id="toggleIcon">+</span> Add Entry
+            </button>
+        </div>
+        
+        <form action="/contacts/{{ contact.id }}/logs/create" method="post" class="log-form" id="logForm" style="display: none;">
+            <div class="form-group">
+                <label for="subject">Subject*</label>
+                <input type="text" id="subject" name="subject" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="contact_type">Type of Contact*</label>
+                <select id="contact_type" name="contact_type" required>
+                    <option value="">Select type...</option>
+                    <option value="Email">Email</option>
+                    <option value="Phone">Phone</option>
+                    <option value="Meeting">Meeting</option>
+                    <option value="LinkedIn">LinkedIn</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" rows="3"></textarea>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn">Save</button>
+                <button type="button" onclick="toggleLogForm()" class="btn btn-secondary">Cancel</button>
+            </div>
+        </form>
+
+        {% if logs %}
+        <div class="logs-list">
+            {% for log in logs %}
+            <div class="log-entry">
+                <div class="log-header">
+                    <strong>{{ log.subject }}</strong>
+                    <span class="log-type">{{ log.contact_type }}</span>
+                </div>
+                <div class="log-date">{{ log.created_at }}</div>
+                {% if log.notes %}
+                <div class="log-notes">{{ log.notes }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="no-logs">No contact logs yet. Add your first entry above.</p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .details-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .details-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .details-section h2 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        color: #2c3e50;
+        font-size: 1.2rem;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 0.5rem;
+    }
+
+    .detail-row {
+        display: flex;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #ecf0f1;
+    }
+
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+
+    .detail-label {
+        font-weight: 600;
+        color: #7f8c8d;
+        min-width: 120px;
+    }
+
+    .logs-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .logs-section h2 {
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        color: #2c3e50;
+        font-size: 1.2rem;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 0.5rem;
+    }
+
+    .log-form {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+
+    .logs-list {
+        margin-top: 2rem;
+    }
+
+    .log-entry {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        border-left: 4px solid #3498db;
+    }
+
+    .log-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .log-type {
+        background: #3498db;
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+    }
+
+    .log-date {
+        color: #7f8c8d;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .log-notes {
+        color: #2c3e50;
+        line-height: 1.5;
+        margin-top: 0.5rem;
+    }
+
+    .no-logs {
+        color: #7f8c8d;
+        font-style: italic;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    @media (max-width: 768px) {
+        .details-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<script>
+function toggleLogForm() {
+    const form = document.getElementById('logForm');
+    const icon = document.getElementById('toggleIcon');
+    const btn = document.getElementById('toggleFormBtn');
+    
+    if (form.style.display === 'none') {
+        form.style.display = 'block';
+        icon.textContent = '−';
+        btn.innerHTML = '<span id="toggleIcon">−</span> Hide Form';
+    } else {
+        form.style.display = 'none';
+        icon.textContent = '+';
+        btn.innerHTML = '<span id="toggleIcon">+</span> Add Entry';
+        // Clear form fields
+        document.getElementById('subject').value = '';
+        document.getElementById('contact_type').value = '';
+        document.getElementById('notes').value = '';
+    }
+}
+</script>
+{% endblock %}

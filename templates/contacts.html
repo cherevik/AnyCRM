@@ -8,31 +8,54 @@
     <a href="/contacts/new" class="btn">+ New Contact</a>
 </div>
 
+<div class="card" style="margin-bottom: 20px;">
+    <input type="text" id="searchInput" placeholder="Search contacts by name, title, email, account, or notes..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+    <div id="searchStatus" style="margin-top: 10px; color: #7f8c8d; font-size: 13px; display: none;"></div>
+</div>
+
 {% if contacts %}
+<div id="contactsContainer">
 <table>
     <thead>
         <tr>
-            <th>Name</th>
+            <th>
+                <a href="?page=1&sort_by=last_name&sort_order={% if sort_by == 'last_name' and sort_order == 'asc' %}desc{% else %}asc{% endif %}" style="color: inherit; text-decoration: none; display: block; cursor: pointer;">
+                    Name 
+                    <span style="font-size: 0.8em; color: {% if sort_by == 'last_name' %}#3498db{% else %}#bdc3c7{% endif %};">
+                        {% if sort_by == 'last_name' and sort_order == 'asc' %}▲{% elif sort_by == 'last_name' and sort_order == 'desc' %}▼{% else %}▲▼{% endif %}
+                    </span>
+                </a>
+            </th>
             <th>Title</th>
-            <th>Account</th>
-            <th>Email</th>
-            <th>LinkedIn</th>
-            <th>Notes</th>
+            <th>
+                <a href="?page=1&sort_by=account_name&sort_order={% if sort_by == 'account_name' and sort_order == 'asc' %}desc{% else %}asc{% endif %}" style="color: inherit; text-decoration: none; display: block; cursor: pointer;">
+                    Account 
+                    <span style="font-size: 0.8em; color: {% if sort_by == 'account_name' %}#3498db{% else %}#bdc3c7{% endif %};">
+                        {% if sort_by == 'account_name' and sort_order == 'asc' %}▲{% elif sort_by == 'account_name' and sort_order == 'desc' %}▼{% else %}▲▼{% endif %}
+                    </span>
+                </a>
+            </th>
+            <th>
+                <a href="?page=1&sort_by=updated_at&sort_order={% if sort_by == 'updated_at' and sort_order == 'asc' %}desc{% else %}asc{% endif %}" style="color: inherit; text-decoration: none; display: block; cursor: pointer;">
+                    Last Updated 
+                    <span style="font-size: 0.8em; color: {% if sort_by == 'updated_at' %}#3498db{% else %}#bdc3c7{% endif %};">
+                        {% if sort_by == 'updated_at' and sort_order == 'asc' %}▲{% elif sort_by == 'updated_at' and sort_order == 'desc' %}▼{% else %}▲▼{% endif %}
+                    </span>
+                </a>
+            </th>
             <th>Actions</th>
         </tr>
     </thead>
     <tbody>
         {% for contact in contacts %}
         <tr>
-            <td><strong>{{ contact.first_name }} {{ contact.last_name }}</strong></td>
+            <td><strong><a href="/contacts/{{ contact.id }}" style="color: #2c3e50; text-decoration: none;">{{ contact.first_name }} {{ contact.last_name }}</a></strong></td>
             <td>{{ contact.title or '-' }}</td>
             <td>{{ contact.account_name or '-' }}</td>
-            <td>{{ contact.email or '-' }}</td>
-            <td>{% if contact.linkedin %}<a href="{{ contact.linkedin }}" target="_blank">Profile</a>{% else %}-{% endif %}</td>
-            <td>{{ contact.notes[:50] if contact.notes else '-' }}{{ '...' if contact.notes and contact.notes|length > 50 else '' }}</td>
+            <td>{{ contact.updated_at[:10] if contact.updated_at else '-' }}</td>
             <td>
                 <div class="actions">
-                    <a href="/contacts/{{ contact.id }}/edit" class="btn btn-secondary">Edit</a>
+                    <a href="/contacts/{{ contact.id }}/edit?next=/contacts?page={{ page }}" class="btn btn-secondary">Edit</a>
                     <form method="post" action="/contacts/{{ contact.id }}/delete" style="display: inline;">
                         <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this contact?')">Delete</button>
                     </form>
@@ -42,7 +65,25 @@
         {% endfor %}
     </tbody>
 </table>
+
+{% if total_pages > 1 %}
+<div class="pagination" style="display: flex; justify-content: center; align-items: center; margin-top: 20px; gap: 10px;">
+    {% if page > 1 %}
+    <a href="?page=1&sort_by={{ sort_by }}&sort_order={{ sort_order }}" class="btn btn-secondary" style="padding: 8px 12px;">« First</a>
+    <a href="?page={{ page - 1 }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" class="btn btn-secondary" style="padding: 8px 12px;">‹ Prev</a>
+    {% endif %}
+    
+    <span style="color: #7f8c8d;">Page {{ page }} of {{ total_pages }} ({{ total }} total)</span>
+    
+    {% if page < total_pages %}
+    <a href="?page={{ page + 1 }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" class="btn btn-secondary" style="padding: 8px 12px;">Next ›</a>
+    <a href="?page={{ total_pages }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" class="btn btn-secondary" style="padding: 8px 12px;">Last »</a>
+    {% endif %}
+</div>
+{% endif %}
+</div>
 {% else %}
+<div id="contactsContainer">
 <div class="card">
     <div class="empty-state">
         <h3>No contacts yet</h3>
@@ -51,5 +92,164 @@
         <a href="/contacts/new" class="btn">+ New Contact</a>
     </div>
 </div>
+</div>
 {% endif %}
+
+<script>
+// Debounced search functionality
+let searchTimeout = null;
+let currentPage = 1;
+let currentQuery = '';
+const searchInput = document.getElementById('searchInput');
+const searchStatus = document.getElementById('searchStatus');
+const contactsContainer = document.getElementById('contactsContainer');
+
+searchInput.addEventListener('input', function(e) {
+    const query = e.target.value.trim();
+    currentQuery = query;
+    currentPage = 1; // Reset to first page on new search
+    
+    // Clear previous timeout
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+    
+    // If query is empty, reload the page to show all contacts
+    if (query === '') {
+        searchStatus.style.display = 'none';
+        window.location.href = '/contacts';
+        return;
+    }
+    
+    // Only search if query is longer than 3 characters
+    if (query.length < 3) {
+        searchStatus.style.display = 'block';
+        searchStatus.textContent = 'Type at least 3 characters to search...';
+        return;
+    }
+    
+    // Show searching status
+    searchStatus.style.display = 'block';
+    searchStatus.textContent = 'Searching...';
+    
+    // Debounce: wait 300ms after user stops typing
+    searchTimeout = setTimeout(() => {
+        performSearch(query, 1);
+    }, 300);
+});
+
+async function performSearch(query, page = 1) {
+    try {
+        const response = await fetch(`/api/contacts/search?q=${encodeURIComponent(query)}&page=${page}&page_size=2`);
+        const data = await response.json();
+        
+        currentPage = page;
+        displayResults(data, query);
+    } catch (error) {
+        searchStatus.textContent = 'Error performing search';
+        console.error('Search error:', error);
+    }
+}
+
+function displayResults(data, query) {
+    const { contacts, total, page, total_pages } = data;
+    
+    if (contacts.length === 0) {
+        searchStatus.textContent = `No contacts found matching "${query}"`;
+        contactsContainer.innerHTML = `
+            <div class="card">
+                <div class="empty-state">
+                    <h3>No matching contacts</h3>
+                    <p>No contacts found matching your search.</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    searchStatus.textContent = `Found ${total} contact${total !== 1 ? 's' : ''}`;
+    
+    // Build table HTML
+    let tableHTML = `
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Title</th>
+                    <th>Account</th>
+                    <th>Last Updated</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    contacts.forEach(contact => {
+        const updatedAt = contact.updated_at ? contact.updated_at.substring(0, 10) : '-';
+        
+        tableHTML += `
+            <tr>
+                <td><strong><a href="/contacts/${contact.id}" style="color: #2c3e50; text-decoration: none;">${escapeHtml(contact.first_name)} ${escapeHtml(contact.last_name)}</a></strong></td>
+                <td>${escapeHtml(contact.title || '-')}</td>
+                <td>${escapeHtml(contact.account_name || '-')}</td>
+                <td>${updatedAt}</td>
+                <td>
+                    <div class="actions">
+                        <a href="/contacts/${contact.id}/edit" class="btn btn-secondary">Edit</a>
+                        <form method="post" action="/contacts/${contact.id}/delete" style="display: inline;">
+                            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this contact?')">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tableHTML += `
+            </tbody>
+        </table>
+    `;
+    
+    // Add pagination if needed
+    if (total_pages > 1) {
+        tableHTML += `
+            <div class="pagination" style="display: flex; justify-content: center; align-items: center; margin-top: 20px; gap: 10px;">
+        `;
+        
+        if (page > 1) {
+            tableHTML += `
+                <button onclick="performSearch('${escapeJs(query)}', 1)" class="btn btn-secondary" style="padding: 8px 12px;">« First</button>
+                <button onclick="performSearch('${escapeJs(query)}', ${page - 1})" class="btn btn-secondary" style="padding: 8px 12px;">‹ Prev</button>
+            `;
+        }
+        
+        tableHTML += `
+            <span style="color: #7f8c8d;">Page ${page} of ${total_pages} (${total} total)</span>
+        `;
+        
+        if (page < total_pages) {
+            tableHTML += `
+                <button onclick="performSearch('${escapeJs(query)}', ${page + 1})" class="btn btn-secondary" style="padding: 8px 12px;">Next ›</button>
+                <button onclick="performSearch('${escapeJs(query)}', ${total_pages})" class="btn btn-secondary" style="padding: 8px 12px;">Last »</button>
+            `;
+        }
+        
+        tableHTML += `
+            </div>
+        `;
+    }
+    
+    contactsContainer.innerHTML = tableHTML;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function escapeJs(text) {
+    return text.replace(/'/g, "\\'").replace(/"/g, '\\"');
+}
+</script>
 {% endblock %}

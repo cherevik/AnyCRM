@@ -8,14 +8,41 @@
     <a href="/accounts/new" class="btn">+ New Account</a>
 </div>
 
+<div class="card" style="margin-bottom: 20px;">
+    <input type="text" id="searchInput" placeholder="Search accounts by name, industry, website, or notes..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+    <div id="searchStatus" style="margin-top: 10px; color: #7f8c8d; font-size: 13px; display: none;"></div>
+</div>
+
 {% if accounts %}
+<div id="accountsContainer">
 <table>
     <thead>
         <tr>
-            <th>Name</th>
-            <th>Industry</th>
+            <th>
+                <a href="?page=1&sort_by=name&sort_order={% if sort_by == 'name' and sort_order == 'asc' %}desc{% else %}asc{% endif %}" style="color: inherit; text-decoration: none; display: block; cursor: pointer;">
+                    Name 
+                    <span style="font-size: 0.8em; color: {% if sort_by == 'name' %}#3498db{% else %}#bdc3c7{% endif %};">
+                        {% if sort_by == 'name' and sort_order == 'asc' %}▲{% elif sort_by == 'name' and sort_order == 'desc' %}▼{% else %}▲▼{% endif %}
+                    </span>
+                </a>
+            </th>
+            <th>
+                <a href="?page=1&sort_by=industry&sort_order={% if sort_by == 'industry' and sort_order == 'asc' %}desc{% else %}asc{% endif %}" style="color: inherit; text-decoration: none; display: block; cursor: pointer;">
+                    Industry 
+                    <span style="font-size: 0.8em; color: {% if sort_by == 'industry' %}#3498db{% else %}#bdc3c7{% endif %};">
+                        {% if sort_by == 'industry' and sort_order == 'asc' %}▲{% elif sort_by == 'industry' and sort_order == 'desc' %}▼{% else %}▲▼{% endif %}
+                    </span>
+                </a>
+            </th>
             <th>Website</th>
-            <th>Notes</th>
+            <th>
+                <a href="?page=1&sort_by=updated_at&sort_order={% if sort_by == 'updated_at' and sort_order == 'asc' %}desc{% else %}asc{% endif %}" style="color: inherit; text-decoration: none; display: block; cursor: pointer;">
+                    Last Updated 
+                    <span style="font-size: 0.8em; color: {% if sort_by == 'updated_at' %}#3498db{% else %}#bdc3c7{% endif %};">
+                        {% if sort_by == 'updated_at' and sort_order == 'asc' %}▲{% elif sort_by == 'updated_at' and sort_order == 'desc' %}▼{% else %}▲▼{% endif %}
+                    </span>
+                </a>
+            </th>
             <th>Actions</th>
         </tr>
     </thead>
@@ -25,10 +52,10 @@
             <td><strong><a href="/accounts/{{ account.id }}" style="color: #2c3e50; text-decoration: none;">{{ account.name }}</a></strong></td>
             <td>{{ account.industry or '-' }}</td>
             <td>{{ account.website or '-' }}</td>
-            <td>{{ account.notes[:50] if account.notes else '-' }}{{ '...' if account.notes and account.notes|length > 50 else '' }}</td>
+            <td>{{ account.updated_at[:10] if account.updated_at else '-' }}</td>
             <td>
                 <div class="actions">
-                    <a href="/accounts/{{ account.id }}/edit" class="btn btn-secondary">Edit</a>
+                    <a href="/accounts/{{ account.id }}/edit?next=/accounts?page={{ page }}" class="btn btn-secondary">Edit</a>
                     <form method="post" action="/accounts/{{ account.id }}/delete" style="display: inline;">
                         <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this account?')">Delete</button>
                     </form>
@@ -38,7 +65,25 @@
         {% endfor %}
     </tbody>
 </table>
+
+{% if total_pages > 1 %}
+<div class="pagination" style="display: flex; justify-content: center; align-items: center; margin-top: 20px; gap: 10px;">
+    {% if page > 1 %}
+    <a href="?page=1&sort_by={{ sort_by }}&sort_order={{ sort_order }}" class="btn btn-secondary" style="padding: 8px 12px;">« First</a>
+    <a href="?page={{ page - 1 }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" class="btn btn-secondary" style="padding: 8px 12px;">‹ Prev</a>
+    {% endif %}
+    
+    <span style="color: #7f8c8d;">Page {{ page }} of {{ total_pages }} ({{ total }} total)</span>
+    
+    {% if page < total_pages %}
+    <a href="?page={{ page + 1 }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" class="btn btn-secondary" style="padding: 8px 12px;">Next ›</a>
+    <a href="?page={{ total_pages }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" class="btn btn-secondary" style="padding: 8px 12px;">Last »</a>
+    {% endif %}
+</div>
+{% endif %}
+</div>
 {% else %}
+<div id="accountsContainer">
 <div class="card">
     <div class="empty-state">
         <h3>No accounts yet</h3>
@@ -47,5 +92,164 @@
         <a href="/accounts/new" class="btn">+ New Account</a>
     </div>
 </div>
+</div>
 {% endif %}
+
+<script>
+// Debounced search functionality
+let searchTimeout = null;
+let currentPage = 1;
+let currentQuery = '';
+const searchInput = document.getElementById('searchInput');
+const searchStatus = document.getElementById('searchStatus');
+const accountsContainer = document.getElementById('accountsContainer');
+
+searchInput.addEventListener('input', function(e) {
+    const query = e.target.value.trim();
+    currentQuery = query;
+    currentPage = 1; // Reset to first page on new search
+    
+    // Clear previous timeout
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+    
+    // If query is empty, reload the page to show all accounts
+    if (query === '') {
+        searchStatus.style.display = 'none';
+        window.location.href = '/accounts';
+        return;
+    }
+    
+    // Only search if query is longer than 3 characters
+    if (query.length < 3) {
+        searchStatus.style.display = 'block';
+        searchStatus.textContent = 'Type at least 3 characters to search...';
+        return;
+    }
+    
+    // Show searching status
+    searchStatus.style.display = 'block';
+    searchStatus.textContent = 'Searching...';
+    
+    // Debounce: wait 300ms after user stops typing
+    searchTimeout = setTimeout(() => {
+        performSearch(query, 1);
+    }, 300);
+});
+
+async function performSearch(query, page = 1) {
+    try {
+        const response = await fetch(`/api/accounts/search?q=${encodeURIComponent(query)}&page=${page}&page_size=2`);
+        const data = await response.json();
+        
+        currentPage = page;
+        displayResults(data, query);
+    } catch (error) {
+        searchStatus.textContent = 'Error performing search';
+        console.error('Search error:', error);
+    }
+}
+
+function displayResults(data, query) {
+    const { accounts, total, page, total_pages } = data;
+    
+    if (accounts.length === 0) {
+        searchStatus.textContent = `No accounts found matching "${query}"`;
+        accountsContainer.innerHTML = `
+            <div class="card">
+                <div class="empty-state">
+                    <h3>No matching accounts</h3>
+                    <p>No accounts found matching your search.</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    searchStatus.textContent = `Found ${total} account${total !== 1 ? 's' : ''}`;
+    
+    // Build table HTML
+    let tableHTML = `
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Industry</th>
+                    <th>Website</th>
+                    <th>Last Updated</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    accounts.forEach(account => {
+        const updatedAt = account.updated_at ? account.updated_at.substring(0, 10) : '-';
+        
+        tableHTML += `
+            <tr>
+                <td><strong><a href="/accounts/${account.id}" style="color: #2c3e50; text-decoration: none;">${escapeHtml(account.name)}</a></strong></td>
+                <td>${escapeHtml(account.industry || '-')}</td>
+                <td>${escapeHtml(account.website || '-')}</td>
+                <td>${updatedAt}</td>
+                <td>
+                    <div class="actions">
+                        <a href="/accounts/${account.id}/edit" class="btn btn-secondary">Edit</a>
+                        <form method="post" action="/accounts/${account.id}/delete" style="display: inline;">
+                            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this account?')">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tableHTML += `
+            </tbody>
+        </table>
+    `;
+    
+    // Add pagination if needed
+    if (total_pages > 1) {
+        tableHTML += `
+            <div class="pagination" style="display: flex; justify-content: center; align-items: center; margin-top: 20px; gap: 10px;">
+        `;
+        
+        if (page > 1) {
+            tableHTML += `
+                <button onclick="performSearch('${escapeJs(query)}', 1)" class="btn btn-secondary" style="padding: 8px 12px;">« First</button>
+                <button onclick="performSearch('${escapeJs(query)}', ${page - 1})" class="btn btn-secondary" style="padding: 8px 12px;">‹ Prev</button>
+            `;
+        }
+        
+        tableHTML += `
+            <span style="color: #7f8c8d;">Page ${page} of ${total_pages} (${total} total)</span>
+        `;
+        
+        if (page < total_pages) {
+            tableHTML += `
+                <button onclick="performSearch('${escapeJs(query)}', ${page + 1})" class="btn btn-secondary" style="padding: 8px 12px;">Next ›</button>
+                <button onclick="performSearch('${escapeJs(query)}', ${total_pages})" class="btn btn-secondary" style="padding: 8px 12px;">Last »</button>
+            `;
+        }
+        
+        tableHTML += `
+            </div>
+        `;
+    }
+    
+    accountsContainer.innerHTML = tableHTML;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function escapeJs(text) {
+    return text.replace(/'/g, "\\'").replace(/"/g, '\\"');
+}
+</script>
 {% endblock %}
