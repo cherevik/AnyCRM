@@ -140,7 +140,7 @@ searchInput.addEventListener('input', function(e) {
 
 async function performSearch(query, page = 1) {
     try {
-        const response = await fetch(`/api/accounts/search?q=${encodeURIComponent(query)}&page=${page}&page_size=2`);
+        const response = await fetch(`/api/accounts/search?q=${encodeURIComponent(query)}&page=${page}&page_size=20`);
         const data = await response.json();
         
         currentPage = page;
